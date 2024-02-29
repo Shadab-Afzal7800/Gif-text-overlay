@@ -155,7 +155,7 @@ class _MyHomePageState extends State<MyHomePage> {
     }
 
     // Combine the GIF files and texts into one image
-    final ByteData? combinedImageData = await _channel.invokeMethod(
+    final byteData = Uint8List.view(await _channel.invokeMethod(
       'combineImages',
       {
         'gifData1': gifData1,
@@ -163,9 +163,11 @@ class _MyHomePageState extends State<MyHomePage> {
         'text1': text1,
         'text2': text2,
       },
-    );
-
+    ))
+        .buffer;
+    final combinedImageData = byteData.buffer;
     // Display the combined image in an AlertDialog
+    // ignore: use_build_context_synchronously
     showDialog(
       context: context,
       builder: (context) {
@@ -173,7 +175,7 @@ class _MyHomePageState extends State<MyHomePage> {
           title: const Text('Combined Image'),
           content: Center(
             child: combinedImageData != null
-                ? Image.memory(Uint8List.view(combinedImageData.buffer))
+                ? Image.memory(combinedImageData)
                 : const Text('Failed to combine images.'),
           ),
           actions: [
