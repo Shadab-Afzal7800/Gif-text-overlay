@@ -1,64 +1,38 @@
-import 'dart:async';
+import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
+import 'package:image_editor/image_editor.dart' hide ImageSource;
 import 'package:image_picker/image_picker.dart';
 
 void main() {
-  runApp(const MaterialApp(
-    home: MyApp(),
-    debugShowCheckedModeBanner: false,
-  ));
+  runApp(const MaterialApp(home: MergeImagePage()));
 }
 
-class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+class MergeImagePage extends StatefulWidget {
+  const MergeImagePage({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    return const MaterialApp(
-      home: MyHomePage(),
-    );
-  }
+  _MergeImagePageState createState() => _MergeImagePageState();
 }
 
-class MyHomePage extends StatefulWidget {
-  const MyHomePage({super.key});
-
-  @override
-  _MyHomePageState createState() => _MyHomePageState();
-}
-
-class _MyHomePageState extends State<MyHomePage> {
+class _MergeImagePageState extends State<MergeImagePage> {
+  int count = 2;
+  ImageProvider? provider;
   Uint8List? gifData1;
   Uint8List? gifData2;
   String text1 = '';
   String text2 = '';
 
-  Future<void> _pickGif(int index) async {
-    final picker = ImagePicker();
-    final pickedFile = await picker.pickImage(source: ImageSource.gallery);
-
-    if (pickedFile != null) {
-      final bytes = await pickedFile.readAsBytes();
-      setState(() {
-        if (index == 1) {
-          gifData1 = bytes.buffer.asUint8List();
-        } else {
-          gifData2 = bytes.buffer.asUint8List();
-        }
-      });
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Combine GIFs and Text'),
+        title: const Text(
+          'merge',
+        ),
       ),
       body: Column(
-        children: [
-          const SizedBox(height: 20),
+        children: <Widget>[
           Row(
             children: [
               const SizedBox(width: 20),
@@ -104,7 +78,6 @@ class _MyHomePageState extends State<MyHomePage> {
                         child: const Icon(Icons.add, size: 50),
                       ),
               ),
-              const SizedBox(width: 20),
               Expanded(
                 child: TextField(
                   onChanged: (value) {
@@ -120,76 +93,91 @@ class _MyHomePageState extends State<MyHomePage> {
               ),
             ],
           ),
-          const SizedBox(height: 20),
-          ElevatedButton(
-            onPressed: () {
-              _combineAndDisplayImages(context);
-            },
-            child: const Text('Combine and Display'),
+          TextButton(
+            onPressed: _merge,
+            child: const Text('merge'),
           ),
+          Slider(
+            value: count.toDouble(),
+            divisions: 4,
+            label: 'count : $count',
+            min: 2,
+            max: 6,
+            onChanged: (double v) {
+              count = v.toInt();
+              setState(() {});
+            },
+          ),
+          buildImageResult(),
         ],
       ),
     );
   }
 
-  Future<void> _combineAndDisplayImages(BuildContext context) async {
-    if (gifData1 == null || gifData2 == null) {
-      showDialog(
-        context: context,
-        builder: (context) {
-          return AlertDialog(
-            title: const Text('Error'),
-            content: const Text('Please select both GIF files.'),
-            actions: [
-              TextButton(
-                onPressed: () {
-                  Navigator.pop(context);
-                },
-                child: const Text('OK'),
-              ),
-            ],
-          );
-        },
-      );
-      return;
-    }
+  Future<void> _pickGif(int index) async {
+    final picker = ImagePicker();
+    final pickedFile = await picker.pickImage(source: ImageSource.gallery);
 
-    // Combine the GIF files and texts into one image
-    final byteData = Uint8List.view(await _channel.invokeMethod(
-      'combineImages',
-      {
-        'gifData1': gifData1,
-        'gifData2': gifData2,
-        'text1': text1,
-        'text2': text2,
-      },
-    ))
-        .buffer;
-    final combinedImageData = byteData.buffer;
-    // Display the combined image in an AlertDialog
-    // ignore: use_build_context_synchronously
-    showDialog(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: const Text('Combined Image'),
-          content: Center(
-            child: combinedImageData != null
-                ? Image.memory(combinedImageData)
-                : const Text('Failed to combine images.'),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.pop(context);
-              },
-              child: const Text('OK'),
-            ),
-          ],
-        );
-      },
-    );
+    if (pickedFile != null) {
+      final bytes = await pickedFile.readAsBytes();
+      setState(() {
+        if (index == 1) {
+          gifData1 = bytes.buffer.asUint8List();
+        } else {
+          gifData2 = bytes.buffer.asUint8List();
+        }
+      });
+    }
   }
 
-  static const MethodChannel _channel = MethodChannel('combine_images');
+  Widget buildImageResult() {
+    if (provider != null) {
+      return SizedBox(
+        width: 300,
+        height: 300,
+        child: Image(image: provider!),
+      );
+    }
+    return Container();
+  }
+
+  Future<void> _merge() async {
+    const double slideLength = 180.0;
+    final ImageMergeOption option = ImageMergeOption(
+      canvasSize: Size(slideLength * count, slideLength * count),
+      format: const OutputFormat.png(),
+    );
+
+    for (int i = 0; i < count; i++) {
+      option.addImage(
+        MergeImageConfig(
+          image: MemoryImageSource(gifData1!),
+          position: ImagePosition(
+            Offset(slideLength * i, slideLength * i),
+            const Size.square(slideLength),
+          ),
+        ),
+      );
+    }
+    for (int i = 0; i < count; i++) {
+      option.addImage(
+        MergeImageConfig(
+          image: MemoryImageSource(gifData2!),
+          position: ImagePosition(
+            Offset(
+                slideLength * count - slideLength * (i + 1), slideLength * i),
+            const Size.square(slideLength),
+          ),
+        ),
+      );
+    }
+
+    final Uint8List? result = await ImageMerger.mergeToMemory(option: option);
+    if (result == null) {
+      provider = null;
+    } else {
+      provider = MemoryImage(result);
+    }
+    setState(() {});
+  }
 }
