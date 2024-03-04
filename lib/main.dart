@@ -148,29 +148,25 @@ class _MergeImagePageState extends State<MergeImagePage> {
       format: const OutputFormat.png(),
     );
 
-    for (int i = 0; i < count; i++) {
-      option.addImage(
-        MergeImageConfig(
-          image: MemoryImageSource(gifData1!),
-          position: ImagePosition(
-            Offset(slideLength * i, slideLength * i),
-            const Size.square(slideLength),
-          ),
+    option.addImage(
+      MergeImageConfig(
+        image: MemoryImageSource(gifData1!),
+        position: const ImagePosition(
+          Offset(0, slideLength),
+          Size.square(slideLength),
         ),
-      );
-    }
-    for (int i = 0; i < count; i++) {
-      option.addImage(
-        MergeImageConfig(
-          image: MemoryImageSource(gifData2!),
-          position: ImagePosition(
-            Offset(
-                slideLength * count - slideLength * (i + 1), slideLength * i),
-            const Size.square(slideLength),
-          ),
+      ),
+    );
+
+    option.addImage(
+      MergeImageConfig(
+        image: MemoryImageSource(gifData2!),
+        position: const ImagePosition(
+          Offset(1, 1),
+          Size.square(slideLength),
         ),
-      );
-    }
+      ),
+    );
 
     final Uint8List? result = await ImageMerger.mergeToMemory(option: option);
     if (result == null) {
