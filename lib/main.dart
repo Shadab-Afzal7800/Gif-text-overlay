@@ -22,96 +22,130 @@ class _MergeImagePageState extends State<MergeImagePage> {
   Uint8List? gifData2;
   String text1 = '';
   String text2 = '';
+  Uint8List? resultImageBytes;
+  late TextEditingController _controller1, _controller2;
+  @override
+  void initState() {
+    super.initState();
+    _controller1 = TextEditingController();
+    _controller2 = TextEditingController();
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      resizeToAvoidBottomInset: false,
       appBar: AppBar(
         title: const Text(
           'merge',
         ),
       ),
-      body: Column(
-        children: <Widget>[
-          Row(
-            children: [
-              const SizedBox(width: 20),
-              GestureDetector(
-                onTap: () => _pickGif(1),
-                child: gifData1 != null
-                    ? Image.memory(gifData1!, width: 150, height: 150)
-                    : Container(
-                        width: 150,
-                        height: 150,
-                        color: Colors.grey[200],
-                        child: const Icon(Icons.add, size: 50),
-                      ),
-              ),
-              const SizedBox(width: 20),
-              Expanded(
-                child: TextField(
-                  onChanged: (value) {
-                    setState(() {
-                      text1 = value;
-                    });
-                  },
-                  decoration: const InputDecoration(
-                    labelText: 'Enter Text 1',
-                    border: OutlineInputBorder(),
+      body: SingleChildScrollView(
+        child: Column(
+          children: <Widget>[
+            Row(
+              children: [
+                const SizedBox(width: 20),
+                GestureDetector(
+                  onTap: () => _pickGif(1),
+                  child: gifData1 != null
+                      ? Image.memory(gifData1!, width: 150, height: 150)
+                      : Container(
+                          width: 150,
+                          height: 150,
+                          color: Colors.grey[200],
+                          child: const Icon(Icons.add, size: 50),
+                        ),
+                ),
+                const SizedBox(width: 20),
+                Expanded(
+                  child: TextField(
+                    controller: _controller1,
+                    onChanged: (value) {
+                      setState(() {
+                        text1 = value;
+                      });
+                    },
+                    decoration: const InputDecoration(
+                      labelText: 'Enter Text 1',
+                      border: OutlineInputBorder(),
+                    ),
                   ),
                 ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 20),
-          Row(
-            children: [
-              const SizedBox(width: 20),
-              GestureDetector(
-                onTap: () => _pickGif(2),
-                child: gifData2 != null
-                    ? Image.memory(gifData2!, width: 150, height: 150)
-                    : Container(
-                        width: 150,
-                        height: 150,
-                        color: Colors.grey[200],
-                        child: const Icon(Icons.add, size: 50),
-                      ),
-              ),
-              Expanded(
-                child: TextField(
-                  onChanged: (value) {
-                    setState(() {
-                      text2 = value;
-                    });
-                  },
-                  decoration: const InputDecoration(
-                    labelText: 'Enter Text 2',
-                    border: OutlineInputBorder(),
+              ],
+            ),
+            const SizedBox(height: 20),
+            Row(
+              children: [
+                const SizedBox(width: 20),
+                GestureDetector(
+                  onTap: () => _pickGif(2),
+                  child: gifData2 != null
+                      ? Image.memory(gifData2!, width: 150, height: 150)
+                      : Container(
+                          width: 150,
+                          height: 150,
+                          color: Colors.grey[200],
+                          child: const Icon(Icons.add, size: 50),
+                        ),
+                ),
+                const SizedBox(width: 20),
+                Expanded(
+                  child: TextField(
+                    controller: _controller2,
+                    onChanged: (value) {
+                      setState(() {
+                        text2 = value;
+                      });
+                    },
+                    decoration: const InputDecoration(
+                      labelText: 'Enter Text 2',
+                      border: OutlineInputBorder(),
+                    ),
                   ),
                 ),
-              ),
-            ],
-          ),
-          TextButton(
-            onPressed: _merge,
-            child: const Text('merge'),
-          ),
-          Slider(
-            value: count.toDouble(),
-            divisions: 4,
-            label: 'count : $count',
-            min: 2,
-            max: 6,
-            onChanged: (double v) {
-              count = v.toInt();
-              setState(() {});
-            },
-          ),
-          buildImageResult(),
-        ],
+              ],
+            ),
+            TextButton(
+              onPressed: _merge,
+              child: const Text('merge'),
+            ),
+            buildImageResult(),
+          ],
+        ),
       ),
     );
+  }
+
+  Future addText(String text, Offset offset) async {
+    const int size = 56;
+    final ImageEditorOption option = ImageEditorOption();
+    final AddTextOption textOption = AddTextOption();
+    textOption.addText(
+      EditorText(
+        offset: offset,
+        text: text,
+        fontSizePx: size,
+        textColor: const Color(0xFF995555),
+      ),
+    );
+    option.outputFormat = const OutputFormat.png();
+
+    option.addOption(textOption);
+
+    final Uint8List u = resultImageBytes!;
+    final Uint8List? result = await ImageEditor.editImage(
+      image: u,
+      imageEditorOption: option,
+    );
+    print(option.toString());
+
+    if (result == null) {
+      return;
+    }
+    resultImageBytes = result;
+    provider = MemoryImage(result);
+    setState(() {});
   }
 
   Future<void> _pickGif(int index) async {
@@ -135,7 +169,7 @@ class _MergeImagePageState extends State<MergeImagePage> {
       return SizedBox(
         width: 300,
         height: 300,
-        child: Image(image: provider!),
+        child: FittedBox(fit: BoxFit.contain, child: Image(image: provider!)),
       );
     }
     return Container();
@@ -152,7 +186,7 @@ class _MergeImagePageState extends State<MergeImagePage> {
       MergeImageConfig(
         image: MemoryImageSource(gifData1!),
         position: const ImagePosition(
-          Offset(0, slideLength),
+          Offset(0, 0),
           Size.square(slideLength),
         ),
       ),
@@ -162,7 +196,7 @@ class _MergeImagePageState extends State<MergeImagePage> {
       MergeImageConfig(
         image: MemoryImageSource(gifData2!),
         position: const ImagePosition(
-          Offset(1, 1),
+          Offset(0, slideLength),
           Size.square(slideLength),
         ),
       ),
@@ -172,8 +206,13 @@ class _MergeImagePageState extends State<MergeImagePage> {
     if (result == null) {
       provider = null;
     } else {
+      resultImageBytes = result;
       provider = MemoryImage(result);
     }
-    setState(() {});
+    print(const Offset(slideLength, slideLength));
+    addText(_controller1.text, const Offset(slideLength, slideLength / 3)).then(
+        (value) => addText(_controller2.text,
+                const Offset(slideLength, slideLength * 1.25))
+            .then((value) => setState(() {})));
   }
 }
