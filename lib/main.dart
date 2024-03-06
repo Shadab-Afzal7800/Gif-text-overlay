@@ -5,17 +5,17 @@ import 'package:image_editor/image_editor.dart' hide ImageSource;
 import 'package:image_picker/image_picker.dart';
 
 void main() {
-  runApp(const MaterialApp(home: MergeImagePage()));
+  runApp(const MaterialApp(home: MyApp()));
 }
 
-class MergeImagePage extends StatefulWidget {
-  const MergeImagePage({super.key});
+class MyApp extends StatefulWidget {
+  const MyApp({super.key});
 
   @override
-  _MergeImagePageState createState() => _MergeImagePageState();
+  _MyAppState createState() => _MyAppState();
 }
 
-class _MergeImagePageState extends State<MergeImagePage> {
+class _MyAppState extends State<MyApp> {
   int count = 2;
   ImageProvider? provider;
   Uint8List? gifData1;
